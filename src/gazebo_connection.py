@@ -42,7 +42,7 @@ class GazeboConnection():
     def spawn(self):
         initial_pose = Pose()
         halflength = 50
-        lol = halflength/5 - 1
+        lol = int(halflength/5 - 1)
 
         arrayx = np.zeros(2*lol+1,dtype = int)
         arrayy = np.zeros(2*lol+1,dtype = int)
@@ -70,7 +70,7 @@ class GazeboConnection():
     def delete_model(self):
         rospy.wait_for_service('/gazebo/delete_model')      
         halflength = 50
-        lol = halflength/5 - 1 
+        lol = int(halflength/5 - 1)
         try:
             for i in range(-lol,lol):
                 name = str(i)
