@@ -9,12 +9,21 @@ g.pauseSim()
 
 print("paused")
 
-name = input("Enter the name of the robot: ")
+lol = input("continue? : ")
 
-g.spawn(name)
+g.spawn()
 
-p = input("Do u want to delete model: ")
+lol = input("continue?: ")
 
-g.delete_model(name)
+g.unpauseSim()
+
+lol = input("continue?: ")
+
+g.pauseSim()
+
+lol = input("continue?: ")
+
+g.delete_model()
+g.resetSim()
 
 g.unpauseSim()
