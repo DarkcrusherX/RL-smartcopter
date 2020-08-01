@@ -61,7 +61,8 @@ class GazeboConnection():
             f = open('/home/ahal/catkin_ws/src/RL-smartcopter/models/building/model.sdf','r')
             sdf = f.read()
             rospy.wait_for_service('/gazebo/spawn_sdf_model')
-            name = str(i)
+            name = "building "
+            name = name + str(i)
             try:
                 self.spawn_model_prox(name, sdf,name, initial_pose, "world")
             except rospy.ServiceException as e:
@@ -73,7 +74,10 @@ class GazeboConnection():
         lol = int(halflength/5 - 1)
         try:
             for i in range(-lol,lol):
-                name = str(i)
+                rospy.wait_for_service('/gazebo/delete_model')  
+                rospy.sleep(1)
+                name = "building "
+                name = name + str(i)
                 self.delete_model_prox(name) 
         except rospy.ServiceException as e:
             print ("/gazebo/delete_model service call failed")
