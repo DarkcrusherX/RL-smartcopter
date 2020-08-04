@@ -166,6 +166,10 @@ class Agent:
 
                 current_state = self.current_state
                 current_pos = self.current_pos
+                #this is the relative current position
+                current_pos[0] = goal_pos[0] - current_pos[0]
+                current_pos[1] = goal_pos[1] - current_pos[1]
+                current_pos[2] = goal_pos[2] - current_pos[2]
                 current_pos = np.array([current_pos.pose.position.x, current_pos.pose.position.y, current_pos.pose.position.z])
                 action = take_action(self,current_state,current_pos)
                 next_state = self.current_state
