@@ -178,6 +178,7 @@ class Agent:
                 reward = self.reward()
                 self.memory.append([current_state,current_pos, action, reward, next_state, next_pos, done])
                 self.train_network()
+		self.epsilon = min(0.01,self.epsilon*0.995)
                 if self.target_count == 1000:
                     self.update_target_network
                     self.target_count == 0
