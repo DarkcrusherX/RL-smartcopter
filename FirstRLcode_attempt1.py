@@ -33,7 +33,7 @@ class Agent:
         self.velocity_publisher = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel',Twist, queue_size=10)
         self.drone_qvalues_model = self.drone_model()
         self.target_drone_qvalues_model = self.drone_model()
-        self.memory = deque(maxlen=30)
+        self.memory = deque(maxlen=50)
         self.target_count = 0
         self.current_pos = PoseStamped()
         self.rate = rospy.Rate(10)
@@ -130,7 +130,7 @@ class Agent:
         return action
             
     def train_network(self):
-        batch_size = 30
+        batch_size = 15
 		if len(self.memory) < batch_size:
 			return
         samples = random.sample(self.memory, batch_size)
@@ -155,7 +155,7 @@ class Agent:
             #start gazebo,px4,spawn and setup(arming and stuff) the  drone
             #set the goal coordinates in an array/////////////////
             while('''episode not over'''): #/////////////////
-                for i in range(30):
+                for i in range(50):
                     current_state = self.current_state
                     current_pos = self.current_pos
                     next_state = self.current_state
