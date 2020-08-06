@@ -40,6 +40,8 @@ class Agent:
         self.collision = False
         self.target_reached = False
         self.goal_radius = #////////set this
+        self.rewards = []
+        self.episode = []
 
     def image_callback(self):
         self.current_state = dbridge.imgmsg_to_cv2(img_msg,"8UC1")
@@ -52,7 +54,7 @@ class Agent:
         if '''collision has happened''': #/////////////////////
             self.collision = True
             return True
-        goal_distance = (math.pow(goal[0]-current_pos[0],2)) + (math.pow(goal[1]-current_pos[1],2)) + (math.pow(goal[2]-current_pos[2],2))
+        goal_distance = math.sqrt((math.pow(goal[0]-current_pos[0],2)) + (math.pow(goal[1]-current_pos[1],2)) + (math.pow(goal[2]-current_pos[2],2)))
         if goal_distance<self.goal_radius:
             self.target_reached = True
             return True
@@ -150,10 +152,12 @@ class Agent:
         self.target_drone_qvalues_model.set_weights(model_weights)
 
     
-    def execute():
+    def execute(self):
+        episode_number = 0
         for episode in range(self.nruns):
+            total_reward = 0
             #start gazebo,px4,spawn and setup(arming and stuff) the  drone
-            #set the goal coordinates in an array/////////////////
+            #set the goal_pos coordinates in an array/////////////////
             while('''episode not over'''): #/////////////////
                 for i in range(50):
                     current_state = self.current_state
@@ -166,27 +170,33 @@ class Agent:
 
                 current_state = self.current_state
                 current_pos = self.current_pos
+                current_pos = np.array([current_pos.pose.position.x, current_pos.pose.position.y, current_pos.pose.position.z])
                 #this is the relative current position
                 current_pos[0] = goal_pos[0] - current_pos[0]
                 current_pos[1] = goal_pos[1] - current_pos[1]
                 current_pos[2] = goal_pos[2] - current_pos[2]
-                current_pos = np.array([current_pos.pose.position.x, current_pos.pose.position.y, current_pos.pose.position.z])
                 action = take_action(self,current_state,current_pos)
                 next_state = self.current_state
                 next_pos = self.current_pos
                 done = self.check_if_done(current_state,current_pos,next_state,next_pos)
                 reward = self.reward()
+                total_reward += reward
                 self.memory.append([current_state,current_pos, action, reward, next_state, next_pos, done])
                 self.train_network()
-		self.epsilon = max(0.01,self.epsilon*0.995)
+                self.epsilon = max(0.01,self.epsilon*0.995)
                 if self.target_count == 1000:
                     self.update_target_network
                     self.target_count == 0
                 if self.collison == True or self.target_reached == True:
                     self.collison = False
                     self.target_reached = False
+                    episode_number += 1
                     break
+            self.rewards.append(total_reward)
+            self.episode.append(episode_number)
+    return self.rewards, self.episode, self.drone_qvalues_model
             #////////kill px4, gazebo
 
-        
-
+import matplotlib.pyplot as plt
+rewards, episode_list, qvalues_model = Agent.execute()
+plt.plot(episode_list,rewards)
