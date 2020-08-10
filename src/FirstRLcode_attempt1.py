@@ -42,6 +42,7 @@ class Agent:
         self.goal_radius = #////////set this
         self.rewards = []
         self.episode = []
+        self.max_steps = 0
 
     def image_callback(self):
         self.current_state = dbridge.imgmsg_to_cv2(img_msg,"8UC1")
@@ -184,16 +185,19 @@ class Agent:
                 self.memory.append([current_state,current_pos, action, reward, next_state, next_pos, done])
                 self.train_network()
                 self.epsilon = max(0.01,self.epsilon*0.995)
+                self.max_steps += 1
                 if self.target_count == 1000:
                     self.update_target_network
                     self.target_count == 0
-                if self.collison == True or self.target_reached == True:
+                if self.collison == True or self.target_reached == True or self.max_steps==20000:
                     self.collison = False
                     self.target_reached = False
+                    self.max_steps = 0
                     episode_number += 1
                     break
             self.rewards.append(total_reward)
             self.episode.append(episode_number)
+            print("Reward for episode ",episode_number,":",total_reward)
     return self.rewards, self.episode, self.drone_qvalues_model
             #////////kill px4, gazebo
 
