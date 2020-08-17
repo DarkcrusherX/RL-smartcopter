@@ -28,8 +28,8 @@
         </geometry>
         <material>
           <script>
-            <uri>/home/ahal/model_editor_models/building/materials/scripts</uri>
-            <uri>/home/ahal/model_editor_models/building/materials/texture/building.jpg</uri>
+            <uri>model://building/materials/scripts</uri>
+            <uri>model://building/materials/texture/building.jpg</uri>
             <name>building/lol</name>
           </script>
         </material>
