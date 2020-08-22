@@ -37,12 +37,12 @@ again = 'y'
 
 while again=='y':
 
-    process = lol.launch()
+    lol.launch()
 
     lul.arm()
     lul.takeoff()
 
-    lol.kill(process)
+    lol.kill()
 
     again = input("Do u want to go again: ")
 
