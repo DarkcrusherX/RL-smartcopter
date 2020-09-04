@@ -84,6 +84,11 @@ class armtakeoff():
             pose.pose.position.z = 5
             self.local_pos_pub.publish(pose)
 
+    def land_rtl(self):
+        self.set_mode_client(base_mode=0, custom_mode="AUTO.RTL")
+        while self.current_pos.pose.position.z > 0.5:
+            pass
+
 
     def disarm(self):
 

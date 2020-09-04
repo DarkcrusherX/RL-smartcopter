@@ -41,10 +41,20 @@ while again=='y':
 
     lul.arm()
     lul.takeoff()
+    lul.disarm()
 
     lol.kill()
 
     again = input("Do u want to go again: ")
+
+def myhook():
+    global lol
+    print("shutdown time!")
+    lol.kill()
+
+    exit(0)
+
+rospy.on_shutdown(myhook)
 
 
 

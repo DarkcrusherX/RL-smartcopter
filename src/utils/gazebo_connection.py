@@ -7,6 +7,7 @@ from gazebo_msgs.srv import SpawnModel
 from geometry_msgs.msg import Pose
 import numpy as np
 import random
+import time
 
 class GazeboConnection():
     
@@ -44,36 +45,47 @@ class GazeboConnection():
         halflength = 50
         lol = int(halflength/5 - 1)
 
-        arrayx = np.zeros(2*lol+1,dtype = int)
-        arrayy = np.zeros(2*lol+1,dtype = int)
+        arrayx = []
+        arrayy = []
 
         for i in range(-lol,lol):
-            arrayx[i] = 5*i +random.randint(1,4)
-            arrayy[i] = 5*i +random.randint(1,4)
+            x = 5*i +random.randint(1,4)
+            y = 5*i +random.randint(1,4)
+            ## Condition to check so building dont land on top of the drone
+            if abs(x) > 4 or abs(y) > 4:
+                arrayx.append(x)
+                arrayy.append(y)
 
+        self.n_buildings = len(arrayx)
+
+        print(arrayx)
+        print(arrayy)
+
+        arrayx = np.array(arrayx)
+        arrayy = np.array(arrayy)
         np.random.shuffle(arrayx)
         np.random.shuffle(arrayy)
 
-        for i in range(-lol,lol):
+        for i in range(0,self.n_buildings):
             initial_pose.position.x = arrayx[i]
             initial_pose.position.y = arrayy[i]
             initial_pose.position.z = 20
-            f = open('/home/ahal/catkin_ws/src/RL-smartcopter/models/building/model.sdf','r')
+            f = open('../models/building/model.sdf','r')
             sdf = f.read()
             rospy.wait_for_service('/gazebo/spawn_sdf_model')
             name = "building "
             name = name + str(i)
+            print(name)
             try:
                 self.spawn_model_prox(name, sdf,name, initial_pose, "world")
+                time.sleep(5)
             except rospy.ServiceException as e:
                 print ("/gazebo/spawn_sdf_model service call failed")
 
     def delete_model(self):
         rospy.wait_for_service('/gazebo/delete_model')      
-        halflength = 50
-        lol = int(halflength/5 - 1)
         try:
-            for i in range(-lol,lol):
+            for i in range(0,self.n_buildings):
                 rospy.wait_for_service('/gazebo/delete_model')  
                 rospy.sleep(1)
                 name = "building "
