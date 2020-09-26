@@ -3,14 +3,14 @@
   <model name='building'>
     <link name='link_0'>
       <inertial>
-        <mass>1</mass>
+        <mass>1000000</mass>
         <inertia>
-          <ixx>0.166667</ixx>
+          <ixx>166667</ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy>0.166667</iyy>
+          <iyy>166667</iyy>
           <iyz>0</iyz>
-          <izz>0.166667</izz>
+          <izz>166667</izz>
         </inertia>
         <pose frame=''>0 0 0 0 -0 0</pose>
       </inertial>
