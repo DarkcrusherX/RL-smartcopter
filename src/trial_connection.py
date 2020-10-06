@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 import rospy
-from gazebo_connection import GazeboConnection
+from utils.gazebo_connection import GazeboConnection
 
 g = GazeboConnection()
 
-g.pauseSim()
+# g.pauseSim()
 
 print("paused")
 
