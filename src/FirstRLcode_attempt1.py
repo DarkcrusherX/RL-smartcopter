@@ -1,5 +1,6 @@
 import rospy
 import time
+import random
 from sensor_msgs.msg import Image
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
@@ -45,9 +46,9 @@ class Agent:
         self.nruns = 1000
         self.sub_image = rospy.Subscriber("/camera/depth/image_raw", Image, self.image_callback)
         self.pos = rospy.Subscriber('mavros/local_position/pose',PoseStamped,self.current_pos_callback)
-        self.imu = rospy.Subscriber("/mavros/imu/data", Imu , self.imu_callback)
+        # self.imu = rospy.Subscriber("/mavros/imu/data", Imu , self.imu_callback)
         self.goal_sub = rospy.Subscriber("goal", PoseStamped , self.goal_callback)
-        self.velocity_publisher = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel',TwistStamped, queue_size=10)
+        self.velocity_publisher = rospy.Publisher('cont_pos_msg',TwistStamped, queue_size=10)
         self.drone_qvalues_model = self.drone_model()
         self.target_drone_qvalues_model = self.drone_model()
         self.memory = deque(maxlen=50)
@@ -73,7 +74,7 @@ class Agent:
 
     def image_callback(self,img_msg):
         self.current_state = dbridge.imgmsg_to_cv2(img_msg,"8UC1")
-        cv2.imshow(self.current_state)
+        # cv2.imshow(self.current_state)
 
     def current_pos_callback(self,position):
         self.current_pos = position
@@ -106,7 +107,7 @@ class Agent:
 
     def reward(self):#///////////check the rewards
         reward = -1
-        if self.collison == True:
+        if self.collision == True:
             reward -= 150
         if self.target_reached == True:
             reward += 100
@@ -114,12 +115,15 @@ class Agent:
 
     def drone_model(self):
         Input1 = Input((480,640,1))
-        X1 = Conv2D(8, (3,3), strides = (1,1), padding = "same", activation = 'relu')(Input1)
-        X1 = Conv2D(16, (3,3), strides = (1,1), padding = "same", activation = 'relu')(X1)
-        X1 = Conv2D(32, (3,3), strides = (1,1), padding = "same", activation = 'relu')(X1)
-        X1 = Conv2D(64, (3,3), strides = (1,1), padding = "same", activation = 'relu')(X1)
+        X1 = Conv2D(8, (3,3), padding = "same", activation = 'relu')(Input1)
+        X1 = Conv2D(16, (3,3), padding = "same", activation = 'relu')(X1)
+        X1 = MaxPooling2D(2,2)(X1)
+        X1 = Conv2D(32, (3,3), padding = "same", activation = 'relu')(X1)
+        # X1 = Conv2D(64, (3,3), padding = "same", activation = 'relu')(X1)
+        X1 = MaxPooling2D(2,2)(X1)
         X1 = Flatten()(X1)
-        X1 = Dense(800, activation = 'relu')(X1)
+        print(X1)
+        # X1 = Dense(800, activation = 'relu')(X1)
         X1 = Dense(64, activation = 'relu')(X1)
         X1 = Dense(64, activation = 'relu')(X1)
         Input2 = Input((3))
@@ -135,7 +139,7 @@ class Agent:
         return model
     
     def take_action(self,state,pos):
-        if np.random.rand < self.epsilon:
+        if np.random.rand() < self.epsilon:
             action = np.random.randint(6)
         else:
             action = np.argmax(self.drone_qvalues_model.predict([state,pos]))
@@ -170,10 +174,11 @@ class Agent:
             for i in range(1000):
                 vel.twist.linear.x = 0.2
                 self.velocity_publisher.publish(vel)
-        vel.linear.x = 0
-        vel.linear.y = 0
-        vel.linear.z = 0
+        vel.twist.linear.x = 0
+        vel.twist.linear.y = 0
+        vel.twist.linear.z = 0
         self.velocity_publisher.publish(vel)
+        print("Action yeyeyeyyeyeyeyyeyeyeyyeyeyeyyeyeyyeyeyey " ,action)
         return action
             
     def train_network(self):
@@ -185,8 +190,12 @@ class Agent:
         samples = random.sample(self.memory, batch_size)
         for sample in samples:
             current_state,current_pos, action, reward, next_state,next_pos, done = sample
+            next_position = np.zeros(3)
+            next_position = np.array([next_pos.pose.position.x, next_pos.pose.position.y, next_pos.pose.position.z])
             if done!=True:
-                next_state_qvalues = self.target_drone_qvalues_model.predict([next_state,next_pos])[0]
+                print("nxt_state ::::::::::::::::::::::::::::::::::::::::::::::::::::::::;", next_state)
+                print("nxt_pos ::::::::::::::::::::::::::::::::::::::::::::::::::::::::;", next_position)
+                next_state_qvalues = self.target_drone_qvalues_model.predict([next_state,next_position])[0]
                 reward = reward + self.gamma*np.max(next_state_qvalues)
             target = self.drone_qvalues_model.predict([current_state,current_pos])[0]
             target[action] = reward
@@ -214,41 +223,46 @@ class Agent:
             self.armf.arm()
             self.armf.takeoff()
 
-            while(self.collision == True or self.target_reached == True): #/////////////////hegkwegjhegkwegj
-                for i in range(50):
-                    current_state = self.current_state
-                    current_pos = self.current_pos
-                    next_state = self.current_state
-                    next_pos = self.current_pos
-                    action = 4
-                    done = False
-                    self.memory.append([current_state,current_pos, action, reward, next_state, next_pos, done])
+            for i in range(50):
+                current_state = self.current_state
+                current_pos = self.current_pos
+                next_state = self.current_state
+                next_pos = self.current_pos
+                action = 4
+                done = False
+                reward = 0
+                self.memory.append([current_state,current_pos, action, reward, next_state, next_pos, done])
+
+            print("collision :::::::::::::::::::::::::::::;;" , self.collision)
+            print("collision :::::::::::::::::::::::::::::;;" , self.target_reached)
+            while(self.collision != True or self.target_reached != True): #/////////////////hegkwegjhegkwegj
 
                 current_state = self.current_state
                 current_pos = self.current_pos
                 current_pos = np.array([current_pos.pose.position.x, current_pos.pose.position.y, current_pos.pose.position.z])
                 #this is the relative current position
                 goal_pos = np.array([self.goal.pose.position.x, self.goal.pose.position.y, self.goal.pose.position.z])
+                current_pos_rel = np.zeros(3)
                 current_pos_rel[0] = goal_pos[0] - current_pos[0]
                 current_pos_rel[1] = goal_pos[1] - current_pos[1]
                 current_pos_rel[2] = goal_pos[2] - current_pos[2]
-                action = take_action(self,current_state,current_pos)
+                action = self.take_action(current_state,current_pos)
                 next_state = self.current_state
                 next_pos = self.current_pos
                 # done = self.check_if_done(current_state,current_pos,next_state,next_pos)
                 done = self.check_if_done(goal_pos)
                 reward = self.reward()
                 total_reward += reward
-                self.memory.append([current_state,current_pos, action, reward, next_state, next_pos, done])
-                print("meowew")
+                self.memory.append([current_state,current_pos_rel, action, reward, next_state, next_pos, done])
+                print("meowewkgbsjgjgnghghghhjhhhhhhhhhhhhhsdnssssvnuseoehgsbgbrihgbbbnbdbbgbdfiuhbdgbrr")
                 self.train_network()
                 self.epsilon = max(0.01,self.epsilon*0.995)
                 self.max_steps += 1
                 if self.target_count == 1000:
                     self.update_target_network
                     self.target_count == 0
-                if self.collison == True or self.target_reached == True or self.max_steps==20000:
-                    self.collison = False
+                if self.collision == True or self.target_reached == True or self.max_steps==20000:
+                    self.collision = False
                     self.target_reached = False
                     self.max_steps = 0
                     episode_number += 1
