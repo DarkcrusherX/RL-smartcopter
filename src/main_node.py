@@ -34,7 +34,7 @@ while again=='y':
     armf.disarm()
     px4.kill()
 
-    gz.pauseSim()
+    # gz.pauseSim()
     gz.delete_model()
     gz.resetSim()
 

@@ -1,4 +1,5 @@
 import rospy
+import time
 from sensor_msgs.msg import Image
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
@@ -6,8 +7,9 @@ import numpy as np
 import math
 from collections import deque
 from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import Twist
 from geometry_msgs.msg import PoseStamped
-import tf
+
 from sensor_msgs.msg import Imu
 
 dbridge = CvBridge()
@@ -21,6 +23,17 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.utils import plot_model
 from std_msgs.msg import String
 
+import os
+import subprocess
+import time
+import rospy
+import signal
+
+from utils.armf import armtakeoff
+from utils.px4_connection import Px4Connection
+from utils.gazebo_connection import GazeboConnection
+
+
 dbridge = CvBridge()
 rospy.init_node('RL_agent', anonymous=True)
 
@@ -31,10 +44,10 @@ class Agent:
         self.epsilon = 1
         self.nruns = 1000
         self.sub_image = rospy.Subscriber("/camera/depth/image_raw", Image, self.image_callback)
-        self.rospy.Subscriber('mavros/local_position/pose',PoseStamped,self.current_pos_callback)
+        self.pos = rospy.Subscriber('mavros/local_position/pose',PoseStamped,self.current_pos_callback)
         self.imu = rospy.Subscriber("/mavros/imu/data", Imu , self.imu_callback)
         self.goal_sub = rospy.Subscriber("goal", PoseStamped , self.goal_callback)
-        self.velocity_publisher = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel',Twist, queue_size=10)
+        self.velocity_publisher = rospy.Publisher('/mavros/setpoint_velocity/cmd_vel',TwistStamped, queue_size=10)
         self.drone_qvalues_model = self.drone_model()
         self.target_drone_qvalues_model = self.drone_model()
         self.memory = deque(maxlen=50)
@@ -50,6 +63,12 @@ class Agent:
         self.max_steps = 0
         self.max_incl = 0.4
         self.goal = PoseStamped()
+        ## Helpers for takeoff,arm,land,etc
+        self.armf = armtakeoff()
+        ## Fn's to restart px4 sitl
+        self.px4 = Px4Connection()
+        ## Gazebo fn for world resets
+        self.gz = GazeboConnection()
         self.imu_check = rospy.Subscriber("pitch_roll_fail", String, self.imu_callback)
 
     def image_callback(self,img_msg):
@@ -94,7 +113,7 @@ class Agent:
         return reward
 
     def drone_model(self):
-        Input1 = Input((480,640))
+        Input1 = Input((480,640,1))
         X1 = Conv2D(8, (3,3), strides = (1,1), padding = "same", activation = 'relu')(Input1)
         X1 = Conv2D(16, (3,3), strides = (1,1), padding = "same", activation = 'relu')(X1)
         X1 = Conv2D(32, (3,3), strides = (1,1), padding = "same", activation = 'relu')(X1)
@@ -159,8 +178,10 @@ class Agent:
             
     def train_network(self):
         batch_size = 15
-		if len(self.memory) < batch_size:
-			return
+        print("meow2")
+        print(len(self.memory))
+        if len(self.memory) < batch_size :
+            return 
         samples = random.sample(self.memory, batch_size)
         for sample in samples:
             current_state,current_pos, action, reward, next_state,next_pos, done = sample
@@ -184,7 +205,16 @@ class Agent:
             total_reward = 0
             #start gazebo,px4,spawn and setup(arming and stuff) the  drone
             #set the goal_pos coordinates in an array/////////////////
-            while(self.collision == True or self.target_reached == True): #/////////////////
+
+            self.gz.pauseSim()
+            self.gz.spawn()
+            self.gz.unpauseSim()
+
+            self.px4.launch()
+            self.armf.arm()
+            self.armf.takeoff()
+
+            while(self.collision == True or self.target_reached == True): #/////////////////hegkwegjhegkwegj
                 for i in range(50):
                     current_state = self.current_state
                     current_pos = self.current_pos
@@ -210,6 +240,7 @@ class Agent:
                 reward = self.reward()
                 total_reward += reward
                 self.memory.append([current_state,current_pos, action, reward, next_state, next_pos, done])
+                print("meowew")
                 self.train_network()
                 self.epsilon = max(0.01,self.epsilon*0.995)
                 self.max_steps += 1
@@ -225,11 +256,23 @@ class Agent:
             self.rewards.append(total_reward)
             self.episode.append(episode_number)
             print("Reward for episode ",episode_number,":",total_reward)
-    return self.rewards, self.episode, self.drone_qvalues_model
+
+            self.armf.disarm()
+            self.px4.kill()
+
+            # gz.pauseSim()
+            self.gz.delete_model()
+            self.gz.resetSim()
+
+        return self.rewards, self.episode, self.drone_qvalues_model
             #////////kill px4, gazebo
 
 import matplotlib.pyplot as plt
-rewards, episode_list, qvalues_model = Agent.execute()
-plt.plot(episode_list,rewards)
+
+if __name__ == '__main__':
+    print("meow")
+    agent = Agent()
+    rewards, episode_list, qvalues_model = agent.execute()
+    plt.plot(episode_list,rewards)
         
 
