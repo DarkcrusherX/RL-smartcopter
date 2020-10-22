@@ -47,7 +47,7 @@ while True :
         # if rospy.Time.now().to_sec() - t0 > 0.01 :
         # print(rospy.Time.now().to_sec() - t0)
         # t0 = rospy.Time.now().to_sec()
-        velocity.twist.linear.z = 0.1 
+        # velocity.twist.linear.z = 0.1 
         velocity_publisher.publish(velocity)
         print(velocity)
         if current_state.armed != True : 
