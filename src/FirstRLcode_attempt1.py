@@ -122,7 +122,6 @@ class Agent:
         # X1 = Conv2D(64, (3,3), padding = "same", activation = 'relu')(X1)
         X1 = MaxPooling2D(2,2)(X1)
         X1 = Flatten()(X1)
-        print(X1)
         # X1 = Dense(800, activation = 'relu')(X1)
         X1 = Dense(64, activation = 'relu')(X1)
         X1 = Dense(64, activation = 'relu')(X1)
@@ -141,50 +140,47 @@ class Agent:
     def take_action(self,state,pos):
         if np.random.rand() < self.epsilon:
             action = np.random.randint(6)
-        else:
-            action = np.argmax(self.drone_qvalues_model.predict([state,pos]))
+        else: 
+            action = np.argmax(self.drone_qvalues_model.predict([state.reshape(1,480,640,1),pos.reshape(1,3)]))
         vel=TwistStamped()
         if action == 0:
             # go up
-            for i in range(1000):
-                vel.twist.linear.z = 0.2
+            for i in range(1):
+                vel.twist.linear.x = 0.2
                 self.velocity_publisher.publish(vel)
         if action == 1:
             # go down
-            for i in range(1000):
-                vel.twist.linear.z = -0.2
+            for i in range(1):
+                vel.twist.linear.x = -0.2
                 self.velocity_publisher.publish(vel)
         if action == 2:
             # go left
-            for i in range(1000):
+            for i in range(1):
                 vel.twist.linear.y = 0.2
                 self.velocity_publisher.publish(vel)
         if action == 3:
             # go right
-            for i in range(1000):
+            for i in range(1):
                 vel.twist.linear.y = -0.2
                 self.velocity_publisher.publish(vel)
         if action == 4:
             # go front
-            for i in range(1000):
+            for i in range(1):
                 vel.twist.linear.x = 0.2
                 self.velocity_publisher.publish(vel)
         if action == 5:
             # go back
-            for i in range(1000):
+            for i in range(1):
                 vel.twist.linear.x = 0.2
                 self.velocity_publisher.publish(vel)
-        vel.twist.linear.x = 0
-        vel.twist.linear.y = 0
-        vel.twist.linear.z = 0
-        self.velocity_publisher.publish(vel)
-        print("Action yeyeyeyyeyeyeyyeyeyeyyeyeyeyyeyeyyeyeyey " ,action)
+        # vel.twist.linear.x = 0
+        # vel.twist.linear.y = 0
+        # vel.twist.linear.z = 0
+        # self.velocity_publisher.publish(vel)
         return action
             
     def train_network(self):
         batch_size = 15
-        print("meow2")
-        print(len(self.memory))
         if len(self.memory) < batch_size :
             return 
         samples = random.sample(self.memory, batch_size)
@@ -193,13 +189,12 @@ class Agent:
             next_position = np.zeros(3)
             next_position = np.array([next_pos.pose.position.x, next_pos.pose.position.y, next_pos.pose.position.z])
             if done!=True:
-                print("nxt_state ::::::::::::::::::::::::::::::::::::::::::::::::::::::::;", next_state)
-                print("nxt_pos ::::::::::::::::::::::::::::::::::::::::::::::::::::::::;", next_position)
-                next_state_qvalues = self.target_drone_qvalues_model.predict([next_state,next_position])[0]
+                next_state_qvalues = self.target_drone_qvalues_model.predict([next_state.reshape(1,480,640,1),next_position.reshape(1,3)])[0]
                 reward = reward + self.gamma*np.max(next_state_qvalues)
-            target = self.drone_qvalues_model.predict([current_state,current_pos])[0]
+            # current_pos = np.array([current_pos.pose.position.x, current_pos.pose.position.y, current_pos.pose.position.z])
+            target = self.drone_qvalues_model.predict([current_state.reshape(1,480,640,1),current_pos.reshape(1,3)])[0]
             target[action] = reward
-            self.drone_qvalues_model.fit([current_state,current_pos], target, verbose = 0)
+            self.drone_qvalues_model.fit([current_state.reshape(1,480,640,1),current_pos.reshape(1,3)], target.reshape(1,6), verbose = 0)
             self.target_count += 1
 
     def update_target_network(self):
@@ -231,10 +226,8 @@ class Agent:
                 action = 4
                 done = False
                 reward = 0
+                current_pos = np.array([current_pos.pose.position.x, current_pos.pose.position.y, current_pos.pose.position.z])
                 self.memory.append([current_state,current_pos, action, reward, next_state, next_pos, done])
-
-            print("collision :::::::::::::::::::::::::::::;;" , self.collision)
-            print("collision :::::::::::::::::::::::::::::;;" , self.target_reached)
             while(self.collision != True or self.target_reached != True): #/////////////////hegkwegjhegkwegj
 
                 current_state = self.current_state
@@ -253,8 +246,13 @@ class Agent:
                 done = self.check_if_done(goal_pos)
                 reward = self.reward()
                 total_reward += reward
+
                 self.memory.append([current_state,current_pos_rel, action, reward, next_state, next_pos, done])
-                print("meowewkgbsjgjgnghghghhjhhhhhhhhhhhhhsdnssssvnuseoehgsbgbrihgbbbnbdbbgbdfiuhbdgbrr")
+                print("acccttttioooooonnnnnn  ::::::::::::::::::", action)
+                print("reward :::::::::::::::::::::::::::::::::;; ", reward)
+                print("next_state ::::::::::::::::::::::::::::::; ", next_state)
+                print("next_pos ::::::::::::::::::::::::::::::::::" , next_pos)
+                print("done ::::::::::::::::::::::::::::::::::" , done)
                 self.train_network()
                 self.epsilon = max(0.01,self.epsilon*0.995)
                 self.max_steps += 1
@@ -284,7 +282,6 @@ class Agent:
 import matplotlib.pyplot as plt
 
 if __name__ == '__main__':
-    print("meow")
     agent = Agent()
     rewards, episode_list, qvalues_model = agent.execute()
     plt.plot(episode_list,rewards)

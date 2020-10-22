@@ -38,7 +38,7 @@ class armtakeoff():
         for i in range(100):
             self.local_pos_pub.publish(pose)
         rate.sleep()
-        print(self.current_state)
+        # print(self.current_state)
         # wait for FCU connection
         while not self.current_state.connected:
             print("Sleeping")
@@ -80,7 +80,6 @@ class armtakeoff():
 
         while pose.pose.position.z-0.1 > self.current_pos.pose.position.z:
             now = rospy.get_rostime()
-            print(self.current_pos.pose.position.z)
             pose.pose.position.z = 5
             self.local_pos_pub.publish(pose)
 
@@ -96,7 +95,6 @@ class armtakeoff():
         rate = rospy.Rate(20.0) # MUST be more then 2Hz
 
         rate.sleep()
-        print(self.current_state)
         # wait for FCU connection
         while not self.current_state.connected:
             print("Sleeping")
